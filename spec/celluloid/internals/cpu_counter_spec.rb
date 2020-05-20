@@ -54,34 +54,73 @@ RSpec.describe Celluloid::Internals::CPUCounter do
           end
           it { is_expected.to eq num_cores }
         end
-      end
 
-      context "when /sys/devices/system/cpu/cpu* files DO NOT exist" do
-        before do
-          expect(Dir).to receive(:[]).with("/sys/devices/system/cpu/cpu*")
-                                     .and_return([])
+        context "when /sys/devices/system/cpu/cpu* files DO NOT exist" do
+          before do
+            expect(Dir).to receive(:[]).with("/sys/devices/system/cpu/cpu*")
+                                       .and_return([])
+          end
+
+          it { is_expected.to be nil }
         end
       end
     end
 
     context "with from_java" do
       subject { described_class.from_java }
+      context "when Java::Java is defined" do
+        let(:java_cores) { 88 }
 
-      xit "not yet tested" do
+        before do
+          stub_const("Java::Java", double)
+          allow(Java::Java).to receive_message_chain(:lang, :Runtime, :getRuntime, :availableProcessors).and_return java_cores
+        end
+
+        it { is_expected.to eq java_cores }
+      end
+
+      context "when Java::Java is not defined" do
+        it { is_expected.to eq nil }
       end
     end
 
     context "with from_proc" do
       subject { described_class.from_proc }
+      context "when file exists" do
+        before do
+          allow(File).to receive(:exist?).and_call_original
+          expect(File).to receive(:exist?).with("/proc/cpuinfo").and_return(true)
+          expect(File).to receive(:read).with("/proc/cpuinfo").and_return("processor\t: tm2 jjgfjhjdffhjfnkjdsse3 c\nprocessor\t:")
+        end
 
-      xit "not yet tested" do
+        it { is_expected.to eq 2}
+      end
+
+      context "when file does not exist" do
+        before do
+          allow(File).to receive(:exist?).and_call_original
+          expect(File).to receive(:exist?).with("/proc/cpuinfo").and_return(false)
+        end
+
+        it { is_expected.to eq nil }
       end
     end
 
     context "with from_win32ole" do
       subject { described_class.from_win32ole }
+      context "win32ole already imported" do
+        let(:win_cores) { 99 }
 
-      xit "not yet tested" do
+        before do
+          stub_const("WIN32OLE", double)
+          allow(WIN32OLE).to receive_message_chain(:connect, :ExecQuery, :NumberOfProcessors).and_return win_cores
+        end
+
+        it { is_expected.to eq win_cores }
+      end
+
+      context "without win32ole" do
+        it { is_expected.to eq nil }
       end
     end
 
@@ -102,13 +141,10 @@ RSpec.describe Celluloid::Internals::CPUCounter do
         before do
           expect(described_class).to receive(:`).with("sysctl -n hw.ncpu 2>/dev/null")
                                                 .and_return(num_cores.to_s)
-          `true`
         end
+
         it { is_expected.to eq num_cores }
       end
-    end
-
-    xit "when all guesses fail" do
     end
 
     context "with from_result" do
@@ -117,12 +153,38 @@ RSpec.describe Celluloid::Internals::CPUCounter do
         it { is_expected.to be nil }
       end
       context "when passed 0" do
-        subject { described_class.from_result(:foo) }
+        subject { described_class.from_result(0) }
         it { is_expected.to be nil }
       end
       context "when passed valid integer" do
         subject { described_class.from_result(num_cores) }
         it { is_expected.to be num_cores }
+      end
+    end
+
+    describe "#count_cores" do
+      subject { described_class.count_cores }
+      before do
+        allow(described_class).to receive(:from_env).and_return(nil)
+        allow(described_class).to receive(:from_sysdev).and_return(nil)
+        allow(described_class).to receive(:from_java).and_return(nil)
+        allow(described_class).to receive(:from_proc).and_return(nil)
+        allow(described_class).to receive(:from_win32ole).and_return(nil)
+        allow(described_class).to receive(:from_sysctl).and_return(nil)
+      end
+
+      context "when all tries fail" do
+        it { is_expected.to eq 1}
+      end
+
+      context "when one method works" do
+        let(:cores) { 60 }
+        before do
+          expect(described_class).to receive(:from_java).once.and_return(cores)
+          expect(described_class).not_to receive(:from_proc)
+        end
+
+        it { is_expected.to eq cores}
       end
     end
   end

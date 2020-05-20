@@ -38,7 +38,7 @@ module Celluloid
         end
 
         def from_win32ole
-          require "win32ole"
+          require "win32ole" unless defined? WIN32OLE
           WIN32OLE.connect("winmgmts://").ExecQuery("select * from Win32_ComputerSystem").NumberOfProcessors
         rescue LoadError
         rescue
