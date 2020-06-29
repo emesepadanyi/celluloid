@@ -9,8 +9,6 @@ RSpec.describe Celluloid::Proxy::Abstract do
   let(:actor_class) { ExampleActorClass.create(CelluloidSpecs.included_module, task_klass) }
   let(:actor) { actor_class.new "Troy McClure" }
 
-  let(:logger) { Specs::FakeLogger.current }
-
   it "should be eql? to self" do
     expect(actor.eql?(actor)).to be_truthy
   end

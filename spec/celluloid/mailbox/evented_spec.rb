@@ -16,7 +16,7 @@ RSpec.describe Celluloid::Mailbox::Evented do
 
   it "discard messages when reactor wakeup fails" do
     expect(Celluloid::Internals::Logger).to receive(:crash).with("reactor crashed", RuntimeError)
-    expect(Celluloid.logger).to receive(:debug).with("Discarded message (mailbox is dead): first")
+    expect(Celluloid::Internals::Logger).to receive(:debug).with("Discarded message (mailbox is dead): first")
 
     bad_reactor = Class.new do
       def wakeup

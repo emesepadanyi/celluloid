@@ -1,6 +1,7 @@
 RSpec.shared_examples "a Celluloid Mailbox" do
+  let(:logger) { Celluloid::Internals::Logger }
   after do
-    allow(Celluloid.logger).to receive(:debug)
+    allow(logger).to receive(:debug)
     subject.shutdown if subject.alive?
   end
 
@@ -66,7 +67,7 @@ RSpec.shared_examples "a Celluloid Mailbox" do
   end
 
   it "logs discarded messages" do
-    expect(Celluloid.logger).to receive(:debug).with("Discarded message (mailbox is dead): third")
+    expect(logger).to receive(:debug).with("Discarded message (mailbox is dead): third")
 
     subject.max_size = 2
     subject << :first
@@ -75,9 +76,9 @@ RSpec.shared_examples "a Celluloid Mailbox" do
   end
 
   it "discard messages when dead" do
-    expect(Celluloid.logger).to receive(:debug).with("Discarded message (mailbox is dead): first")
-    expect(Celluloid.logger).to receive(:debug).with("Discarded message (mailbox is dead): second")
-    expect(Celluloid.logger).to receive(:debug).with("Discarded message (mailbox is dead): third")
+    expect(logger).to receive(:debug).with("Discarded message (mailbox is dead): first")
+    expect(logger).to receive(:debug).with("Discarded message (mailbox is dead): second")
+    expect(logger).to receive(:debug).with("Discarded message (mailbox is dead): third")
 
     subject << :first
     subject << :second

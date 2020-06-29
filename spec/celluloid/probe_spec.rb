@@ -33,8 +33,6 @@ class TestProbeClient
 end
 
 RSpec.describe "Probe", actor_system: :global do
-  let(:logger) { Specs::FakeLogger.current }
-
   def addr(actor)
     return nil unless actor
     return nil unless actor.mailbox

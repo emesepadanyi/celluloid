@@ -1,6 +1,4 @@
 RSpec.describe Celluloid::Condition, actor_system: :global do
-  let(:logger) { Specs::FakeLogger.current }
-
   class ConditionExample
     include Celluloid
 
@@ -36,6 +34,12 @@ RSpec.describe Celluloid::Condition, actor_system: :global do
 
   let(:actor) { ConditionExample.new }
   after { actor.terminate rescue nil }
+
+  before :each do
+    stub_const("Celluloid::Internals::Logger", double)
+    allow(Celluloid::Internals::Logger).to receive(:level)
+    allow(Celluloid::Internals::Logger).to receive(:debug)
+  end
 
   it "sends signals" do
     3.times { actor.async.wait_for_condition }
@@ -78,7 +82,7 @@ RSpec.describe Celluloid::Condition, actor_system: :global do
   end
 
   it "times out inside Tasks" do
-    allow(logger).to receive(:crash).with("Actor crashed!", Celluloid::ConditionError)
+    expect(Celluloid::Internals::Logger).to receive(:crash).with("Actor crashed!", Celluloid::ConditionError)
     expect { actor.wait_for_condition(1) }
       .to raise_error(Celluloid::ConditionError)
   end

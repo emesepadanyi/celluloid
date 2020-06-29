@@ -15,35 +15,11 @@ RSpec.configure do |config|
     mocks.verify_partial_doubles = true
   end
 
-  config.before(:suite) do
-    Specs.stub_out_class_method(Celluloid::Internals::Logger, :crash) do |*args|
-      _name, ex = *args
-      raise "Unstubbed Logger.crash() was called:\n  crash(\n    #{args.map(&:inspect).join(",\n    ")})"\
-        "\nException backtrace: \n  (#{ex.class}) #{ex.backtrace * "\n  (#{ex.class}) "}"
-    end
-  end
-
-  config.before(:each) do |example|
-    @fake_logger = Specs::FakeLogger.new(Celluloid.logger, example.description)
-    stub_const("Celluloid::Internals::Logger", @fake_logger)
-  end
-
   config.around do |ex|
-    # Needed because some specs mock/stub/expect on the logger
-    Celluloid.logger = Specs.logger
     Celluloid.actor_system = nil
     Specs.reset_class_variables(ex.description) do
       Timeout.timeout(Specs::MAX_EXECUTION) { ex.run }
     end
-    if @fake_logger.crashes?
-      crashes = @fake_logger.crashes.map do |args, call_stack|
-        msg, ex = *args
-        "\n** Crash: #{msg.inspect}(#{ex.inspect})\n  Backtrace:\n    (crash) #{call_stack * "\n    (crash) "}"\
-          "\n  Exception Backtrace (#{ex.inspect}):\n    (ex) #{ex.backtrace * "\n    (ex) "}"
-      end.join("\n")
-      raise "Actor crashes occurred (please stub/mock if these are expected): #{crashes}"
-    end
-    @fake_logger = nil
     Specs.assert_no_loose_threads!("after example: #{ex.description}") if Specs::CHECK_LOOSE_THREADS
   end
 

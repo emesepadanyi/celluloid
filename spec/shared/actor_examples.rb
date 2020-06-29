@@ -9,7 +9,7 @@ RSpec.shared_examples "a Celluloid Actor" do
   let(:actor_class) { ExampleActorClass.create(CelluloidSpecs.included_module, task_klass) }
   let(:actor) { actor_class.new "Troy McClure" }
 
-  let(:logger) { Specs::FakeLogger.current }
+  let(:logger) { Celluloid::Internals::Logger }
 
   it "doesn't raise an error when rebooting" do
     Celluloid.shutdown
@@ -206,10 +206,12 @@ RSpec.shared_examples "a Celluloid Actor" do
       end.new
     end
 
+    let(:with_backtrace) { Celluloid::Internals::Logger::WithBacktrace.new("back") }
     it "warns about suspending the initialize" do
       allow(logger).to receive(:level).and_return(Logger::DEBUG)
+      allow(logger).to receive(:with_backtrace).and_yield(with_backtrace)
       # rubocop:disable Metrics/LineLength
-      expect(logger).to receive(:warn).with(/Dangerously suspending task: type=:call, meta={:dangerous_suspend=>true, :method_name=>:initialize}, status=:sleeping/)
+      expect(with_backtrace).to receive(:warn).with("Dangerously suspending task: type=:call, meta={:dangerous_suspend=>true, :method_name=>:initialize}, status=:sleeping")
       # rubocop:enable Metrics/LineLength
 
       actor.terminate
@@ -238,13 +240,15 @@ RSpec.shared_examples "a Celluloid Actor" do
       end.new
     end
 
+    let(:with_backtrace) { Celluloid::Internals::Logger::WithBacktrace.new("back") }
     it "warns about suspending the finalizer" do
-      allow(logger).to receive(:warn)
-      allow(logger).to receive(:crash).with(/finalizer crashed!/, Celluloid::TaskTerminated)
-      # rubocop:disable Metrics/LineLength
       allow(logger).to receive(:level).and_return(Logger::DEBUG)
-      expect(logger).to receive(:warn).with(/Dangerously suspending task: type=:finalizer, meta={:dangerous_suspend=>true, :method_name=>:cleanup}, status=:sleeping/)
+      allow(logger).to receive(:with_backtrace).and_yield(with_backtrace)
+      # rubocop:disable Metrics/LineLength
+      expect(with_backtrace).to receive(:warn).with("Terminating task: type=:finalizer, meta={:dangerous_suspend=>true, :method_name=>:cleanup}, status=:sleeping")
+      expect(with_backtrace).to receive(:warn).with("Dangerously suspending task: type=:finalizer, meta={:dangerous_suspend=>true, :method_name=>:cleanup}, status=:sleeping")
       # rubocop:enable Metrics/LineLength
+      expect(logger).to receive(:crash).with(/finalizer crashed!/, Celluloid::TaskTerminated)
       actor.terminate
       Specs.sleep_and_wait_until { !actor.alive? }
     end
@@ -418,13 +422,13 @@ RSpec.shared_examples "a Celluloid Actor" do
       let(:actor) { actor_class.new "James Dean" } # is this in bad taste?
 
       it "reraises exceptions which occur during synchronous calls in the sender" do
-        allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+        expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
         expect { actor.crash }.to raise_exception(ExampleCrash)
         Specs.sleep_and_wait_until { !actor.alive? }
       end
 
       it "includes both sender and receiver in exception traces" do
-        allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+        expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash).twice
 
         example_receiver = Class.new do
           include CelluloidSpecs.included_module
@@ -446,7 +450,7 @@ RSpec.shared_examples "a Celluloid Actor" do
       end
 
       it "raises DeadActorError if methods are synchronously called on a dead actor" do
-        allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+        expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
         begin
           actor.crash
         rescue
@@ -480,7 +484,7 @@ RSpec.shared_examples "a Celluloid Actor" do
 
     it "crashes the sender if we pass neither String nor Exception" do
       number = 10
-      allow(logger).to receive(:crash).with("Actor crashed!", TypeError)
+      expect(logger).to receive(:crash).with("Actor crashed!", TypeError)
       expect do
         actor.crash_with_abort_raw number
       end.to raise_exception(TypeError, "Exception object/String expected, but #{number.class} received")
@@ -560,10 +564,12 @@ RSpec.shared_examples "a Celluloid Actor" do
       end
 
       context "when terminated" do
+        let(:with_backtrace) { Celluloid::Internals::Logger::WithBacktrace.new("back") }
         it "logs a debug" do
           allow(logger).to receive(:level).and_return(Logger::DEBUG)
+          expect(logger).to receive(:with_backtrace).and_yield(with_backtrace)
           # rubocop:disable Metrics/LineLength
-          expect(logger).to receive(:debug).with(/^Terminating task: type=:call, meta={:dangerous_suspend=>false, :method_name=>:sleepy}, status=:sleeping/)
+          expect(with_backtrace).to receive(:debug).with(/^Terminating task: type=:call, meta={:dangerous_suspend=>false, :method_name=>:sleepy}, status=:sleeping/)
           # rubocop:enable Metrics/LineLength
           actor.terminate
           Specs.sleep_and_wait_until { !actor.alive? }
@@ -653,7 +659,7 @@ RSpec.shared_examples "a Celluloid Actor" do
     end
 
     it "traps exit messages from other actors" do
-      allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+      expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
       chuck = supervisor_class.new "Chuck Lorre"
       chuck.link @charlie
 
@@ -666,7 +672,7 @@ RSpec.shared_examples "a Celluloid Actor" do
     end
 
     it "traps exit messages from other actors in subclasses" do
-      allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+      expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
 
       supervisor_subclass = Class.new(supervisor_class)
       chuck = supervisor_subclass.new "Chuck Lorre"
@@ -681,7 +687,7 @@ RSpec.shared_examples "a Celluloid Actor" do
     end
 
     it "unlinks from a dead linked actor" do
-      allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+      expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
       chuck = supervisor_class.new "Chuck Lorre"
       chuck.link @charlie
 
@@ -694,7 +700,7 @@ RSpec.shared_examples "a Celluloid Actor" do
     end
 
     it "traps exit reason from subordinates" do
-      allow(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
+      expect(logger).to receive(:crash).with("Actor crashed!", ExampleCrash)
       chuck = supervisor_class.new "Chuck Lorre"
       chuck.link @charlie
 
@@ -1267,7 +1273,7 @@ RSpec.shared_examples "a Celluloid Actor" do
     let(:a2) { actor_class.new }
 
     it "allows timing out tasks, raising Celluloid::TaskTimeout" do
-      allow(logger).to receive(:crash).with("Actor crashed!", Celluloid::TaskTimeout)
+      expect(logger).to receive(:crash).with("Actor crashed!", Celluloid::TaskTimeout)
       expect { a1.ask_name_with_timeout a2, 0.3 }.to raise_error(Celluloid::TaskTimeout)
       Specs.sleep_and_wait_until { !a1.alive? }
     end

@@ -8,7 +8,6 @@ module Specs
     logging
     sleep_and_wait
     reset_class_variables
-    crash_checking
     loose_threads
     stubbing
     coverage

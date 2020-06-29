@@ -1,5 +1,5 @@
 RSpec.describe "Celluloid supervisor", actor_system: :global do
-  let(:logger) { Specs::FakeLogger.current }
+  let(:logger) { Celluloid::Internals::Logger }
 
   it "restarts actors when they die" do
     supervisor = Celluloid.supervise(type: Subordinate, args: [:idle])
@@ -9,7 +9,7 @@ RSpec.describe "Celluloid supervisor", actor_system: :global do
     subordinate.crack_the_whip
     expect(subordinate.state).to be(:working)
 
-    allow(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
+    expect(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
 
     expect do
       subordinate.crack_the_whip
@@ -30,7 +30,7 @@ RSpec.describe "Celluloid supervisor", actor_system: :global do
     subordinate.crack_the_whip
     expect(subordinate.state).to be(:working)
 
-    allow(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
+    expect(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
 
     expect do
       subordinate.crack_the_whip
@@ -48,7 +48,7 @@ RSpec.describe "Celluloid supervisor", actor_system: :global do
     subordinate = supervisor.actors.first
     expect(subordinate.state).to be(:working)
 
-    allow(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
+    expect(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
 
     expect do
       subordinate.crack_the_whip
@@ -67,7 +67,7 @@ RSpec.describe "Celluloid supervisor", actor_system: :global do
     subordinate = Celluloid::Actor[:subordinate]
     expect(subordinate.state).to be(:working)
 
-    allow(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
+    expect(logger).to receive(:crash).with("Actor crashed!", SubordinateDead)
 
     expect do
       subordinate.crack_the_whip

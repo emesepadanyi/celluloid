@@ -1,8 +1,7 @@
 RSpec.shared_examples "a Celluloid Group" do
   let!(:queue) { Queue.new }
   let!(:busy_queue) { Queue.new }
-
-  let(:logger) { Specs::FakeLogger.current }
+  let(:logger) { Celluloid::Internals::Logger }
 
   def wait_until_busy(busy_queue = nil)
     return busy_queue.pop if busy_queue
@@ -29,8 +28,6 @@ RSpec.shared_examples "a Celluloid Group" do
     context "with an #{exception_class} in the thread" do
       before do
         @wait_queue = Queue.new # doesn't work if in a let()
-
-        allow(logger).to receive(:crash)
 
         subject.get do
           busy_queue << nil
